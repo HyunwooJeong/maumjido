@@ -257,7 +257,7 @@ Box.prototype.add = function(item) {
 			window.open($jqEl.attr("id"));
 		});
 		$jqEl.css({
-			"background-image": "url(http://www.google.com/s2/favicons?domain="+$jqEl.attr("id")+")",
+			"background-image": "url(https://www.google.com/s2/favicons?domain="+$jqEl.attr("id")+")",
 			"background-repeat": "no-repeat",
 			"background-position": "50% 50%",
 			"background-size": "50%",
