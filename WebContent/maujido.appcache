@@ -1,6 +1,6 @@
 CACHE MANIFEST
-# 2015-02-22 v1.0.4
-http://code.jquery.com/jquery-1.9.1.js
+# 2016-10-28 v1.0.5
+./js/jquery-1.9.1.js
 ./index.html
 ./js/jquery.hammer-full.min.js
 ./js/constants.js
@@ -18,4 +18,4 @@ http://code.jquery.com/jquery-1.9.1.js
 ./img/wood-texturer-245034-XL.jpg
 
 NETWORK:
-http://www.google.com/s2/favicons
+*
