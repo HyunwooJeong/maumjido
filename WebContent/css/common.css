@@ -1,0 +1,122 @@
+body {
+	background : url(../img/wood-texturer-245034-XL.jpg);	
+}
+.box {
+	display: inline;
+	position: absolute;
+	border-width: 1px;
+	border-style: solid;
+	border-color: silver;
+	-moz-border-radius: 15px;
+	border-radius: 15px;
+	z-index: 100;
+    /* box-shadow: 0px 10px 10px gray;
+	-moz-box-shadow: 0px 10px 10px gray;
+	-webkit-box-shadow: 0px 10px 10px gray; */
+	text-align:center;
+	font-size:14px;
+	background-color:rgba(255,255,255,0.8);
+	padding: 10px;
+	width: 40px;
+	height: 40px;
+}
+
+.box div {
+	width : 55px;
+	margin-left:-9px;
+	padding-top:55px;
+	color: #FFF;
+	text-shadow:
+	1px 1px 0px #555,
+	-1px -1px 0px #555,
+	1px 0px 0px #555,
+	-1px 0px 0px #555,
+	0px 1px 0px #555,
+	0px -1px 0px #555;
+}
+
+.nobox {
+	display: inline;
+	position: absolute;
+	z-index: 100;
+	text-align:center;
+	float:left;
+	margin: 15px;
+	width: 40px;
+	height: 40px;
+}
+
+.folder {
+	position: absolute;
+	background-image:url(../img/folder-147568_150.png);
+	background-size: 60px 60px;
+	text-align:center;
+	font-size:14px;
+	padding: 10px;
+	margin: 15px;
+	width: 40px;
+	height: 40px;
+	z-index: 100;
+}
+.folder div {
+	margin-top:15px;
+}
+
+.shadow {
+	box-shadow: 0px 30px 10px gray;
+	-moz-box-shadow: 0px 30px 10px gray;
+	-webkit-box-shadow: 0px 30px 10px gray;
+	z-index: 200;
+}
+
+.draggable {
+	position: absolute;
+}
+
+#mask {
+	width : 100%;
+	height : 100%;
+	position : fixed;
+	background-color : rgba(0,0,0,0.5);
+	display : none;
+	z-index : 200;
+	left : 0px;
+	top : 0px;
+}
+.dialog {
+	position : absolute;
+	padding : 10px;
+	text-align:center;
+	border-width: 1px;
+	border-style: solid;
+	border-color: silver;
+	-moz-border-radius: 15px;
+	border-radius: 15px;
+	background-color:rgba(255,255,255,1);
+	display : none;
+	z-index : 201;
+}
+
+.categoryBar {
+	position : absolute;
+	background-color:rgba(255,255,255,0.5);
+	background-image:url(../img/arrows-147745_150.png);
+	background-size: 40px 40px;
+	background-position: 50% 50%;
+	background-repeat : no-repeat ;
+	padding: 10px;
+}
+.selectArea {
+	display:none;
+	background-color:rgba(255,255,255,0.5);
+	position: absolute;
+	border-width: 1px;
+	border-style: solid;
+	border-color: silver;
+	-moz-border-radius: 15px;
+	border-radius: 15px;
+	z-index: 300;
+}
+.selected {
+	background-color:green;
+}

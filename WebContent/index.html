@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html manifest="maujido.appcache">
+<head>
+<meta name="viewport" content="width=device-width; initial-scale=1.0; minimum-scale=1.0; maximum-scale=1.0; user-scalable=0;" />
+<link rel="icon" href="./img/maumjido.ico" type="image/x-icon">
+<link rel="shortcut icon" href="./img/maumjido.ico" type="image/x-icon">
+<link rel="shortcut icon" href="./img/maumjido.ico" type="image/vnd.microsoft.icon"><!--The 2010 IANA standard but not supported in IE-->
+<meta charset="UTF-8">
+<title>마음지도</title>
+<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+<script src="./js/jquery.hammer-full.min.js"></script>
+<script src="./js/constants.js"></script>
+<script src="./js/grid.m.js"></script>
+<script src="./js/dragdrop.m.js"></script>
+<script src="./js/util.js"></script>
+<script src="./js/box.m.js"></script>
+<script src="./js/view.js"></script>
+<script src="./js/control.js"></script>
+<link rel="stylesheet" href="./css/common.css">
+<script>
+	var globalBox = null;
+    
+ 	// 접속 핸드폰 정보 
+    var userAgent = navigator.userAgent.toLowerCase();
+     
+    // 모바일 홈페이지 바로가기 링크 생성 
+    if(userAgent.match('iphone')) { 
+    	document.write('<link rel="apple-touch-icon" href="./img/maumjido.ico" type="image/x-icon"/>') 
+    } else if(userAgent.match('ipad')) { 
+    	document.write('<link rel="apple-touch-icon" sizes="72*72" href="./img/maumjido.ico" type="image/x-icon"/>') 
+    } else if(userAgent.match('ipod')) { 
+    	document.write('<link rel="apple-touch-icon" href="./img/maumjido.ico" type="image/x-icon"/>') 
+    } 
+    
+    var grid = new Grid();
+    var reserveDeleteBox = null;
+    var dragdrop = new Dragdrop();
+    var categoryTop = 0;
+    var GLOBAL_EVENT_STACK = [];
+	$(function() {
+		dragdrop.setTriggerEvent("hold");
+		
+		$(document).hammer({
+			prevent_default : true,
+			no_mouseevents : true,
+			hold_timeout: 100,
+			drag_min_distance : 10
+	    })
+	    .on("touch", function(e) {
+	    	var eventKey = Util.getKey();
+	    	GLOBAL_EVENT_STACK.push(eventKey);
+	    	log("touch:"+e.gesture.target.tagName+e.gesture.deltaTime);
+	    	var target = e.gesture.target;
+	    	e.data = dragdrop;
+	    	setTimeout(function(){
+	    		if(eventKey == GLOBAL_EVENT_STACK.pop()) {
+	    			console.log(e.gesture.distance);
+    	    		Dragdrop.draggable(e);
+	    		}
+	    	},100);
+	    })
+	    .on("drag", function(e) {
+	    	log("drag:"+e.gesture.target.tagName);
+	    	GLOBAL_EVENT_STACK.pop();
+	    })
+	    //.on("hold", dragdrop, Dragdrop.draggable) // 인식잘안돼서 직접하겠어
+	    .on("pinch", function(e){
+	    	log("pinch:"+e.gesture.target.tagName);
+	    	e.preventDefault();
+	    	if($("#mask").is(":visible")) {
+	    		return true;
+	    	}
+	    	$(".gridCell").removeClass("selected");
+	    	try {
+    	    	var $sa = $("#selectArea").show();
+    	    	var left = Math.min(e.gesture.touches[0].pageX, e.gesture.touches[1].pageX);
+    	    	var width = Math.abs(e.gesture.touches[0].pageX - e.gesture.touches[1].pageX);
+    	    	var top = Math.min(e.gesture.touches[0].pageY, e.gesture.touches[1].pageY);
+    	    	var height = Math.abs(e.gesture.touches[0].pageY - e.gesture.touches[1].pageY);
+    	    	
+    	    	$sa.css({left: left, width: width, top: top, height: height});
+    	    	
+    	    	var cx2 = left+width;
+    	    	var cy2 = top+height
+    	    	var index1 = grid.getIndexByPosition(left, top);
+    	    	var index2 = grid.getIndexByPosition(cx2, cy2);
+    
+    	    	var col1 = grid.getCol(index1);
+    	    	var row1 = grid.getRow(index1);
+    	    	var x1 = left - grid.getX(index1);
+    	    	var y1 = top - grid.getY(index1);
+    	    	
+    	    	var col2 = grid.getCol(index2);
+    	    	var row2 = grid.getRow(index2);
+    	    	var x2 = cx2 - grid.getX(index2);
+    	    	var y2 = cy2 - grid.getY(index2);
+    	    	
+    	    	if(x1>15){
+    	    		col1++;
+    	    	}
+    	    	if(y1>15){
+    	    		row1++;
+    	    	}
+    	    	if(x2<75){
+    	    		col2--;
+    	    	}
+    	    	if(y2<75){
+    	    		row2--;
+    	    	}
+    	    	
+    	    	for(var i=col1; i<=col2; i++) {
+    	    		for(var j=row1; j<=row2; j++) {
+    	    			var index = j*grid.getColCnt()+i;
+    	    			var item = globalBox.getItemByIndex(index);
+    	    			if(item != null && item.isLink) {
+    		    			var cell = grid.getCell(index);
+    		    			if(cell != null) {
+    	    		    		cell.getEl().addClass("selected").attr("itemId", item.getId());
+    		    			}
+    	    			}
+    		    	}
+    	    	}
+	    	
+	    	} catch(e){
+	    		log(e.message);
+	    	}
+		}).on("release", function(e) {
+			GLOBAL_EVENT_STACK.pop();
+			log("document release");
+			$("#selectArea").hide();
+			if($(".selected").size() > 0){
+				try {
+        			var sourceBox = globalBox;
+        			var folderItem = null;
+            		$(".selected").each(function(){
+            			var itemId = $(this).attr("itemId");
+        				$(this).attr("itemId", null);
+        				var sourceItem = sourceBox.getItemById(itemId);
+        				if(folderItem == null) {
+                			folderItem = sourceBox.createFolderItem(itemId);
+	    					sourceBox.mod(folderItem);
+        				} else {
+                			var destBox = folderItem.getBox();
+            				
+            				sourceBox.removeItem(itemId).remove();
+            				destBox.add(createLinkItem(itemId, sourceItem.getName()));
+        				}
+            		});
+            		$(".selected").removeClass("selected");
+        			save("폴더에넣기");
+				} catch(e) {
+					log(e.message);
+				}
+			}
+		});
+		
+		var width = 90;
+		var height = 90;
+		grid.setParent($("#baseCategory"));
+		grid.setWidth(width);
+		grid.setHeight(height);
+		grid.calc();
+		
+		globalBox = Box.getInstance(grid.getId());
+		globalBox.setGrid(grid);
+		// 플러스
+		globalBox.add(getPlusItem());
+		// 휴지통
+		globalBox.add(getTrashcan());
+		
+		function getPlusItem() {
+			var plusItem = new Item();
+			var $jqEl = plusItem.setJqEl($("#plus"));
+			plusItem.setId("plus");
+			
+			plusItem.setMargin(15);
+			plusItem.setWidth(45);
+			plusItem.setHeight(45);
+			return plusItem;
+		}
+		
+		function getTrashcan() {
+			var trashcanItem = new Item();
+			trashcanItem.setId("trashcan");
+			var $jqEl = trashcanItem.setJqEl($("#trashcan"));
+			
+			trashcanItem.setMargin(15);
+			trashcanItem.setWidth(45);
+			trashcanItem.setHeight(45);
+			return trashcanItem;
+		}
+		//saveInit();
+		load();
+		
+		function getCategoryBar() {
+			var categoryBarItem = new Item();
+			categoryBarItem.setId("categoryBar"+Util.getKey());
+			var $jqEl = categoryBarItem.setJqEl($("<div>").addClass("categoryBar"));
+			categoryBarItem.setColCnt(grid.getColCnt());
+			categoryBarItem.setMargin(25);
+			categoryBarItem.setWidth(grid.getWidth()*grid.getColCnt()-50);
+			categoryBarItem.setHeight(45);
+			return categoryBarItem;
+		}
+		
+		$("#plus")
+			.hammer({
+				prevent_default : false,
+				no_mouseevents : true,
+				drag_min_distance : 1
+		    })
+		    .on("tap", showAddItemMenu);
+		$("input,select").hammer();
+		$("#btnAddCancel").hammer().on("tap", hideAddItemMenu);
+		$("#btnModCancel").hammer().on("tap", hideModItemMenu);
+		$("#btnAddConfirm").hammer().on("tap", addItem);
+		$("#btnModConfirm").hammer().on("tap", modItem);
+		$("#btnFolderConfirm").hammer().on("tap", fnCreateFolder);
+		$("#btnDelConfirm").hammer().on("tap", delItem);
+		// 폴더
+		$("#btnModFolderConfirm").hammer().on("tap", modFolder);
+		$("#btnDelFolderConfirm").hammer().on("tap", delFolder);
+		$("#btnModFolderCancel").hammer().on("tap", hideModFolderMenu);
+		$("#contentsName").on("keydown", function(event){if(event.keyCode == 13){addItem();}});
+		$("#contentsType").change(changeContentsType);
+		$("#contents").attr("placeholder", getContentsTypeComment('1'));
+		$("#mask").hammer().on("tap", function() {
+			hideAddItemMenu();
+			hideModFolderMenu();
+			hideModItemMenu();
+			$(".dialog").hide();
+			G_maskCnt=1;
+			hideMask();
+		});
+		dragdrop.setDragCallback(function(objX, objY, touchX, touchY, $target) {
+			var boxId = $target.attr("boxId");
+			var id = $target.attr("id");
+			var sourceBox = Box.getInstance(boxId);
+			var thisGrid = sourceBox.getGrid();
+			var index = thisGrid.getSelectGridIndx(objX, objY, objX + width, objY + height);
+			var cell = thisGrid.getCell(index);
+			var $parent = thisGrid.getParent();
+			if(cell != null) {
+				$(".gridCell").removeClass("selected");
+				cell.getEl().addClass("selected");
+			} else if($parent.hasClass("dialog") && (index < 0 || thisGrid.getRowCnt() <= thisGrid.getRow(index))){
+				$(".gridCell").removeClass("selected");
+				// 폴더안의 Item을 밖으로 옮기기
+				var item = sourceBox.removeItem(id);
+				var $el = item.getJqEl().attr("boxId", globalBox.getId());
+				var pLeft = $parent.position().left;
+				var pTop = $parent.position().top;
+				var marginWidth = parseInt($parent.css("margin-left"));
+				var marginHeight = parseInt($parent.css("margin-top"));
+				var gapX = $el.attr("gapX")-pLeft - marginWidth;
+				var gapY = $el.attr("gapY")-pTop - marginHeight;
+				$el.attr("gapX", gapX);
+				$el.attr("gapY", gapY);
+				
+		     	// 바탕에 셀하나 추가
+				globalBox.add(item);
+		     	// margin이 초기화 된다;;
+		     	var marginTop = parseInt($el.css("margin-top"))-20;
+		     	$el.css({"margin-top":marginTop});
+				
+				$target.css({
+					left : touchX - gapX,
+					top : touchY - gapY
+				});
+				
+				// 폴더에 마지막 한개였다면 폴더도 삭제.
+		        if(sourceBox.getTotalCnt() == 0) {
+		        	reserveDeleteBox = sourceBox;
+		        }
+				
+				// 폴더 닫기
+				thisGrid.getParent().hide();
+				hideMask();
+				
+			} else {
+				$(".gridCell").removeClass("selected");
+			}
+			
+			
+		});
+		dragdrop.setReleaseCallback(function(objX, objY, touchX, touchY, $target) {
+			$(".gridCell").removeClass("selected");
+			
+			var id = $target.attr("id");
+			var boxId = $target.attr("boxId");
+			var sourceBox = Box.getInstance(boxId);
+			var grid = sourceBox.getGrid();
+			var selectedIndex = grid.getSelectGridIndx(objX, objY, objX + width, objY + height);
+			var destItem = sourceBox.getItemByIndex(selectedIndex);
+			var cell = null;
+			var sourceItem = sourceBox.getItemById(id);
+			if(destItem != null) {
+				if(destItem.isFolder) {
+					if(sourceItem.isFolder) {
+						// 폴더안에 폴더 X => 제자리
+						sourceBox.changePosition(sourceItem.getIndex(), id);
+					} else {
+    					sourceBox.removeItem(id).remove();
+    					destItem.getBox().add(createLinkItem(sourceItem.getId(), sourceItem.getName()));
+    					save("폴더에넣기");
+					}
+				} else if(destItem.getId() == 'trashcan') { // 휴지통
+					sourceBox.removeItem(id).remove();
+					save("아이템삭제");
+				} else if(destItem.getId() == 'plus') { // 폴더생성
+					if(sourceItem.isFolder) {
+						// 폴더안에 폴더 X => 제자리
+						sourceBox.changePosition(sourceItem.getIndex(), id);
+					} else {
+    					var folderItem = sourceBox.createFolderItem(id);
+    					sourceBox.mod(folderItem);
+    					save("폴더생성");
+					}
+				} else { // Item
+					sourceBox.changePosition(selectedIndex, id);
+					save("자리이동");
+				}
+			} else { // 제자리
+				sourceBox.changePosition(selectedIndex, id);
+				save("자리이동");
+			}
+			
+			// 예약 삭제 처리
+			if(reserveDeleteBox != null){
+				if(reserveDeleteBox.getTotalCnt() == 0) {
+    				var folderItem = reserveDeleteBox.getParentItem();
+    	        	globalBox.removeItem(folderItem.getId()).remove();
+    	        	reserveDeleteBox.remove();
+    				save("예약삭제");
+				}
+				reserveDeleteBox = null;
+			}
+		});
+	});
+	
+</script>
+</head>
+<body>
+    <div class="draggable" id="log"></div>
+    <div id="mask"></div>
+    <div id="addForm" class="dialog">
+	    <p><input type="text" id="contentsName" placeholder="이름을 입력하세요."></p>
+    	<p><select id="contentsType" style="display:none;">
+	    <option value="1">URL</option>
+	    <option value="2">TEL</option>
+	    <option value="3">SMS</option>
+	    <option value="4">카톡</option>
+	    </select><input type="text" id="contents"></p>
+	    <p>
+	    <input type="button" value="확인" id="btnAddConfirm"><input type="button" value="취소" id="btnAddCancel">
+	    </p>
+    </div>
+    <div id="modForm" class="dialog" style="z-index:1000;">
+    	<input type="hidden" id="folderBoxId">
+        <input type="hidden" id="folderItemId">
+	    <p><input type="text" id="contentsName2" placeholder="이름을 입력하세요."></p>
+    	<p><select id="contentsType2" style="display:none;">
+	    <option value="1">URL</option>
+	    <option value="2">TEL</option>
+	    <option value="3">SMS</option>
+	    <option value="4">카톡</option>
+	    </select><input type="text" id="contents2"></p>
+	    <p>
+	    <input type="button" value="수정" id="btnModConfirm">
+	    <input type="button" value="삭제" id="btnDelConfirm">
+	    <input type="button" value="폴더" id="btnFolderConfirm">
+	    <input type="button" value="취소" id="btnModCancel">
+	    </p>
+    </div>
+    <div id="modFolderForm" class="dialog">
+        <input type="hidden" id="folderBoxId">
+        <input type="hidden" id="folderItemId">
+	    <p>이름 : <input type="text" id="modFolderName"></p>
+	    <p>
+	    <input type="button" value="수정" id="btnModFolderConfirm">
+        <input type="button" value="삭제" id="btnDelFolderConfirm">
+	    <input type="button" value="취소" id="btnModFolderCancel">
+	    </p>
+    </div>
+    
+    <div class="nobox" id="plus">
+        <img src="./img/sign-27080_640.png" width="70" height="70">
+    </div>
+    <div class="nobox" id="trashcan">
+        <img src="./img/trashcan-26717_640.png" width="70" height="70">
+    </div>
+    <div id="baseCategory" class="category"></div>
+    <div id="selectArea" class="selectArea"></div>
+</body>
+</html>
