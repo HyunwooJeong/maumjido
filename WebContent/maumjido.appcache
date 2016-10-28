@@ -1,6 +1,6 @@
 CACHE MANIFEST
-# 2016-10-28 v1.0.6
-./js/jquery-1.9.1.js
+# 2016-10-28 v1.0.7
+./js/jquery1.9.1.js
 ./index.html
 ./js/jquery.hammer-full.min.js
 ./js/constants.js
